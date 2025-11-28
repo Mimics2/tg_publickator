@@ -1,49 +1,58 @@
 Sequel.migration do
   up do
-    create_table(:users) do
+    create_table?(:users) do
       primary_key :id
       bigint :telegram_id, null: false, unique: true
-      string :username
-      string :first_name
-      string :last_name
-      datetime :created_at
-      datetime :updated_at
+      String :username
+      String :first_name
+      String :last_name
+      DateTime :created_at
+      DateTime :updated_at
+      
+      index :telegram_id
     end
 
-    create_table(:subscriptions) do
+    create_table?(:subscriptions) do
       primary_key :id
       foreign_key :user_id, :users
-      string :plan_type, null: false
-      string :status, default: 'active'
-      datetime :expires_at
-      datetime :created_at
-      datetime :updated_at
+      String :plan_type, null: false
+      String :status, default: 'active'
+      DateTime :expires_at
+      DateTime :created_at
+      DateTime :updated_at
+      
+      index :user_id
     end
 
-    create_table(:posts) do
+    create_table?(:posts) do
       primary_key :id
       foreign_key :user_id, :users
-      string :media_type
-      text :media_url
-      text :caption
-      string :status, default: 'draft'
-      datetime :scheduled_for
-      datetime :published_at
-      datetime :created_at
+      String :media_type
+      Text :media_url
+      Text :caption
+      String :status, default: 'draft'
+      DateTime :scheduled_for
+      DateTime :published_at
+      DateTime :created_at
+      
+      index :user_id
+      index :status
     end
 
-    create_table(:payments) do
+    create_table?(:payments) do
       primary_key :id
       foreign_key :user_id, :users
-      string :plan_type
-      integer :stars_amount
-      string :status
-      string :payment_hash
-      datetime :created_at
+      String :plan_type
+      Integer :stars_amount
+      String :status
+      String :payment_hash
+      DateTime :created_at
+      
+      index :user_id
     end
   end
 
   down do
     drop_table(:payments, :posts, :subscriptions, :users)
   end
-end	
+end
