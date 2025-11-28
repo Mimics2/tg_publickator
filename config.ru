@@ -1,46 +1,61 @@
-require 'rufus-scheduler'
+require './bot'
+require 'sinatra'
 
-class SchedulerService
-  def initialize
-    @scheduler = Rufus::Scheduler.new
-    setup_scheduled_tasks
+set :port, ENV['PORT'] || 3000
+set :bind, '0.0.0.0'
+
+# Инициализация базы данных при старте
+def init_database
+  require 'sequel'
+  
+  DB = if ENV['DATABASE_URL']
+    Sequel.connect(ENV['DATABASE_URL'])
+  else
+    Sequel.sqlite('bot.db')
   end
-
-  def schedule_post(post_id, publish_time)
-    @scheduler.at publish_time do
-      publish_scheduled_post(post_id)
-    end
+  
+  # Проверяем и создаем таблицы если нужно
+  begin
+    DB.tables
+  rescue => e
+    puts "Database setup needed: #{e.message}"
+    require_relative 'migrations/001_create_tables'
+    Sequel::Migrator.run(DB, "migrations")
   end
+end
 
-  private
+# Вебхук для Railway
+post '/webhook' do
+  request.body.rewind
+  data = JSON.parse(request.body.read)
+  
+  bot = TelegramPublisherBot.new
+  bot.process_update(data)
+  
+  status 200
+end
 
-  def setup_scheduled_tasks
-    # Ежедневная проверка подписок
-    @scheduler.cron '0 0 * * *' do
-      check_expired_subscriptions
-    end
+get '/' do
+  '🤖 Telegram Publisher Bot is running!'
+end
 
-    # Очистка старых данных
-    @scheduler.cron '0 2 * * *' do
-      cleanup_old_data
-    end
-  end
+get '/health' do
+  status 200
+  { status: 'ok', time: Time.now }.to_json
+end
 
-  def publish_scheduled_post(post_id)
-    post = Post[post_id]
-    return unless post && post.scheduled?
+# Инициализация при старте
+init_database
 
-    TelegramService.new().publish_post(post)
-    post.update(status: 'published', published_at: Time.now)
-  end
-
-  def check_expired_subscriptions
-    expired_subs = Subscription.where('expires_at < ?', Time.now).where(status: 'active')
-    expired_subs.update(status: 'expired')
-  end
-
-  def cleanup_old_data
-    # Удаляем посты старше 30 дней
-    Post.where('created_at < ?', 30.days.ago).delete
+# Запуск бота в отдельном потоке
+Thread.new do
+  begin
+    puts "🤖 Starting Telegram Bot..."
+    bot = TelegramPublisherBot.new
+    bot.run
+  rescue => e
+    puts "Bot error: #{e.message}"
+    sleep 5
+    retry
   end
 end
