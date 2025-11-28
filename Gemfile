@@ -1,0 +1,11 @@
+source 'https://rubygems.org'
+
+gem 'sinatra'
+gem 'telegram-bot-ruby'
+gem 'sqlite3'
+gem 'sequel'
+gem 'rake'
+gem 'pry'
+gem 'redis'
+gem 'sidekiq'
+gem 'rufus-scheduler'
