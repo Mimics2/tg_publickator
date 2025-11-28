@@ -1,0 +1,29 @@
+require 'sequel'
+require 'logger'
+
+task :environment do
+  DB = if ENV['DATABASE_URL']
+    Sequel.connect(ENV['DATABASE_URL'])
+  else
+    Sequel.sqlite('bot.db')
+  end
+end
+
+desc "Run migrations"
+task :migrate => :environment do
+  Sequel.extension :migration
+  Sequel::Migrator.run(DB, "migrations")
+  puts "Migrations completed"
+end
+
+desc "Create database tables"
+task :setup => :environment do
+  require_relative 'migrations/001_create_tables'
+  Sequel::Migrator.run(DB, "migrations")
+  puts "Database setup completed"
+end
+
+desc "Start the bot"
+task :start do
+  exec "ruby config.ru"
+end
